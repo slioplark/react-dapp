@@ -1,11 +1,11 @@
-import React, { Component } from "react";
+import React from "react";
 // import SimpleStorageContract from "./contracts/SimpleStorage.json";
 // import getWeb3 from "./getWeb3";
 
 import { Layout, Nav, Button } from "@douyinfe/semi-ui";
 
 const App = () => {
-  const { Header, Footer, Content } = Layout;
+  const { Header, Content } = Layout;
 
   // const state = { storageValue: 0, web3: null, accounts: null, contract: null };
 
