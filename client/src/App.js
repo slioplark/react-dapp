@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
+
+import Web3 from "web3";
 // import SimpleStorageContract from "./contracts/SimpleStorage.json";
-// import getWeb3 from "./getWeb3";
 
 import { Layout, Nav, Button } from "@douyinfe/semi-ui";
 
 const App = () => {
   const { Header, Content } = Layout;
+  const [account, setAccount] = useState("");
 
   // const state = { storageValue: 0, web3: null, accounts: null, contract: null };
 
@@ -54,6 +56,17 @@ const App = () => {
   //   return <div>Loading Web3, accounts, and contract...</div>;
   // }
 
+  const connectWallet = async () => {
+    if (window.ethereum) {
+      const provider = window.ethereum;
+      await provider.enable();
+
+      const web3 = new Web3(provider);
+      const accounts = await web3.eth.getAccounts();
+      setAccount(accounts[0]);
+    }
+  };
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Header>
@@ -61,7 +74,13 @@ const App = () => {
           <Nav mode="horizontal" defaultSelectedKeys={["Home"]}>
             <Nav.Header>React Dapp</Nav.Header>
             <Nav.Footer>
-              <Button theme="borderless">Connect Wallet</Button>
+              {account ? (
+                <Button theme="borderless">{account}</Button>
+              ) : (
+                <Button theme="borderless" onClick={connectWallet}>
+                  Connect Wallet
+                </Button>
+              )}
             </Nav.Footer>
           </Nav>
         </div>
