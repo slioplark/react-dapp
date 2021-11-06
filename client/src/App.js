@@ -1,70 +1,58 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import Web3 from "web3";
+import InboxContract from "./contracts/Inbox.json";
 // import SimpleStorageContract from "./contracts/SimpleStorage.json";
 
-import { Layout, Nav, Button } from "@douyinfe/semi-ui";
+import { Layout, Nav, Form, Button } from "@douyinfe/semi-ui";
+
+const { Header, Content } = Layout;
 
 const App = () => {
-  const { Header, Content } = Layout;
-  const [account, setAccount] = useState("");
+  const [state, setState] = useState({
+    web3: null,
+    message: null,
+    account: null,
+    isConnect: false,
+    inboxContract: null,
+  });
 
-  // const state = { storageValue: 0, web3: null, accounts: null, contract: null };
+  useEffect(() => {
+    getInboxContract();
+  }, []);
 
-  // componentDidMount = async () => {
-  //   try {
-  //     // Get network provider and web3 instance.
-  //     const web3 = await getWeb3();
+  const getInboxContract = async () => {
+    if (window.ethereum) {
+      const web3 = new Web3(window.ethereum);
+      const inboxContract = new web3.eth.Contract(
+        InboxContract.abi,
+        InboxContract.networks[5777].address
+      );
 
-  //     // Use web3 to get the user's accounts.
-  //     const accounts = await web3.eth.getAccounts();
-
-  //     // Get the contract instance.
-  //     const networkId = await web3.eth.net.getId();
-  //     const deployedNetwork = SimpleStorageContract.networks[networkId];
-  //     const instance = new web3.eth.Contract(
-  //       SimpleStorageContract.abi,
-  //       deployedNetwork && deployedNetwork.address,
-  //     );
-
-  //     // Set web3, accounts, and contract to the state, and then proceed with an
-  //     // example of interacting with the contract's methods.
-  //     this.setState({ web3, accounts, contract: instance }, this.runExample);
-  //   } catch (error) {
-  //     // Catch any errors for any of the above operations.
-  //     alert(
-  //       `Failed to load web3, accounts, or contract. Check console for details.`,
-  //     );
-  //     console.error(error);
-  //   }
-  // };
-
-  // runExample = async () => {
-  //   const { accounts, contract } = this.state;
-
-  //   // Stores a given value, 5 by default.
-  //   await contract.methods.set(5).send({ from: accounts[0] });
-
-  //   // Get the value from the contract to prove it worked.
-  //   const response = await contract.methods.get().call();
-
-  //   // Update state with the result.
-  //   this.setState({ storageValue: response });
-  // };
-
-  // if (!state.web3) {
-  //   return <div>Loading Web3, accounts, and contract...</div>;
-  // }
+      const message = await inboxContract.methods.get().call();
+      setState((prev) => ({
+        ...prev,
+        web3,
+        message,
+        inboxContract,
+      }));
+    }
+  };
 
   const connectWallet = async () => {
     if (window.ethereum) {
-      const provider = window.ethereum;
-      await provider.enable();
-
-      const web3 = new Web3(provider);
+      await window.ethereum.enable();
+      const web3 = new Web3(window.ethereum);
       const accounts = await web3.eth.getAccounts();
-      setAccount(accounts[0]);
+      setState((prev) => ({ ...prev, account: accounts[0], isConnect: true }));
     }
+  };
+
+  const handleSubmit = async (formData) => {
+    const { account, inboxContract } = state;
+    await inboxContract.methods.set(formData.message).send({ from: account });
+    const message = await inboxContract.methods.get().call();
+    setState((prev) => ({ ...prev, message }));
   };
 
   return (
@@ -74,8 +62,8 @@ const App = () => {
           <Nav mode="horizontal" defaultSelectedKeys={["Home"]}>
             <Nav.Header>React Dapp</Nav.Header>
             <Nav.Footer>
-              {account ? (
-                <Button theme="borderless">{account}</Button>
+              {state.account ? (
+                <Button theme="borderless">{state.account}</Button>
               ) : (
                 <Button theme="borderless" onClick={connectWallet}>
                   Connect Wallet
@@ -85,7 +73,20 @@ const App = () => {
           </Nav>
         </div>
       </Header>
-      <Content style={{ padding: "24px" }}>Content</Content>
+      <Content style={{ padding: "24px" }}>
+        <Form
+          layout="horizontal"
+          onSubmit={(formData) => handleSubmit(formData)}
+        >
+          <Form.Input noLabel style={{ width: 200 }} field="message" />
+          <Button type="primary" htmlType="submit" disabled={!state.isConnect}>
+            Submit
+          </Button>
+        </Form>
+        <p style={{ margin: "24px 0" }}>
+          This message is {state.message || "nothing"}
+        </p>
+      </Content>
     </Layout>
   );
 };
