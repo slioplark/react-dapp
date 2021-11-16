@@ -1,59 +1,64 @@
 import React, { useState, useEffect } from "react";
 
-import Web3 from "web3";
+import { ethers } from "ethers";
 import InboxContract from "./contracts/Inbox.json";
-// import SimpleStorageContract from "./contracts/SimpleStorage.json";
 
-import { Layout, Nav, Form, Button } from "@douyinfe/semi-ui";
+import { Layout, Nav, Form, Toast, Button, TextArea } from "@douyinfe/semi-ui";
 
 const { Header, Content } = Layout;
 
 const App = () => {
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const contract = new ethers.Contract(
+    InboxContract.networks[3].address,
+    InboxContract.abi,
+    provider.getSigner()
+  );
+
   const [state, setState] = useState({
-    web3: null,
     message: null,
     account: null,
+    contract: null,
     isConnect: false,
-    inboxContract: null,
+    isLoading: false,
   });
 
-  useEffect(() => {
-    getInboxContract();
-  }, []);
-
   const getInboxContract = async () => {
-    if (window.ethereum) {
-      const web3 = new Web3(window.ethereum);
-      const inboxContract = new web3.eth.Contract(
-        InboxContract.abi,
-        InboxContract.networks[5777].address
-      );
+    if (typeof window.ethereum === "undefined") return;
 
-      const message = await inboxContract.methods.get().call();
-      setState((prev) => ({
-        ...prev,
-        web3,
-        message,
-        inboxContract,
-      }));
+    try {
+      const message = await contract.message();
+      setState((prev) => ({ ...prev, message, contract }));
+    } catch (err) {
+      Toast.error(err);
     }
   };
 
   const connectWallet = async () => {
-    if (window.ethereum) {
-      await window.ethereum.enable();
-      const web3 = new Web3(window.ethereum);
-      const accounts = await web3.eth.getAccounts();
-      setState((prev) => ({ ...prev, account: accounts[0], isConnect: true }));
-    }
+    if (typeof window.ethereum === "undefined") return;
+
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+
+    setState({ ...state, account: accounts[0], isConnect: true });
   };
 
   const handleSubmit = async (formData) => {
-    const { account, inboxContract } = state;
-    await inboxContract.methods.set(formData.message).send({ from: account });
-    const message = await inboxContract.methods.get().call();
-    setState((prev) => ({ ...prev, message }));
+    const { contract } = state;
+
+    const signature = await provider.getSigner().signMessage(formData.message);
+    const transaction = await contract.set(signature);
+
+    setState((prev) => ({ ...prev, isLoading: true }));
+    await transaction.wait();
+    const message = await contract.message();
+    setState((prev) => ({ ...prev, isLoading: false, message }));
   };
+
+  useEffect(() => {
+    getInboxContract();
+  }, []);
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -79,13 +84,19 @@ const App = () => {
           onSubmit={(formData) => handleSubmit(formData)}
         >
           <Form.Input noLabel style={{ width: 200 }} field="message" />
-          <Button type="primary" htmlType="submit" disabled={!state.isConnect}>
+          <Button
+            type="primary"
+            loading={state.isLoading}
+            htmlType="submit"
+            disabled={!state.isConnect}
+          >
             Submit
           </Button>
+          <TextArea
+            style={{ margin: "24px 0" }}
+            value={state.message || "nothing"}
+          />
         </Form>
-        <p style={{ margin: "24px 0" }}>
-          This message is {state.message || "nothing"}
-        </p>
       </Content>
     </Layout>
   );
