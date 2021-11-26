@@ -20,5 +20,14 @@ module.exports = {
       },
       network_id: "3",
     },
+    rinkeby: {
+      provider: function () {
+        return new HDWalletProvider(
+          process.env.MNEMONIC,
+          `https://rinkeby.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
+        );
+      },
+      network_id: 4,
+    },
   },
 };
